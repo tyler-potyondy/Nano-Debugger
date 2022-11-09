@@ -12,7 +12,7 @@ Stemming from this challenge, our group proposes implementing a visual debugger 
 
 #### Mile Stone 1: Successfully implement Nano interpreter/parser (complete CSE130 homework assignment 4)
 #### Mile Stone 2: Modify interpreter to capture intermediate computational values
-#### Mile Stone 3: Add functionality to 
+#### Mile Stone 3: Add functionality to step through intermediate values
 #### Mile Stone 4: Design and implement brick GUI to visualize intermediate values and control debugger stepping
 
 ### Additional Remarks
