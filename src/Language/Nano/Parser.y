@@ -67,14 +67,43 @@ import Control.Exception
 %%
 
 Top  : ID '=' Expr                 { $3 }
+     | TNUM '=' TNUM               { EInt 0 }
      | Expr                        { $1 }
 
+
+
+BinOp : '+'  {Plus}
+      | '-'  {Minus}
+      | '*'  {Mul}
+      | '||' {Or}
+      | '&&' {And}
+      | '==' {Eq}
+      | '/=' {Ne}
+      | '<=' {Le}
+      | '<'  {Lt}
+
+Ids : ID         { [$1] } 
+    | ID Ids     { $1 : $2 }
+
 Expr : TNUM                        { EInt $1 }
+     | ID                          { EVar $1 } 
+     | let Ids '=' Expr in Expr    { mkLet $2 $4 $6 }
+     | Expr BinOp Expr             { EBin $2 $1 $3 }
+     | '(' Expr ')'                { $2 }
+     | '\\' Ids '->' Expr          { mkLam $2 $4 }
+     | true                        { EBool True }
+     | false                       { EBool False }
+     | if Expr then Expr else Expr { EIf $2 $4 $6 }
+     | Expr Expr                   { EApp $1 $2 }
 
 {
 mkLam :: [Id] -> Expr -> Expr
 mkLam []     e = e
 mkLam (x:xs) e = ELam x (mkLam xs e)
+
+mkLet :: [Id] -> Expr -> Expr -> Expr
+mkLet []     e1 e2 = e2
+mkLet (x:xs) e1 e2 = ELet x (mkLam xs e1) e2
 
 parseError :: [Token] -> Except String a
 parseError (l:ls) = throwError (show l)
