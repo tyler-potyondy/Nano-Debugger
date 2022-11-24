@@ -188,9 +188,19 @@ eval env (EApp e1@(EVar fname) e2) = let e1eval = eval env e1 in
 
 eval env (EApp (ELam id e) e2) = eval newEnv e
                                       where
-                                         newEnv = (id, eval env e2):env                                  
+                                         newEnv = (id, eval env e2):env    
+eval env (EApp (EApp e1 e2) e3) = case e1 of (EVar id) -> eval env (EApp (EApp (ELam funcId funcExpr) e2) e3)
+                                                where
+                                                  clos = closConverter (lookupId id env)
+                                                  funcId = fst (snd clos)
+                                                  funcExpr = snd (snd clos)
+                                             (ELam id expr) -> eval ((id,(eval env e2)):env) (EApp expr e3)
 
+eval env (EApp _ s3) = throw (Error "type error: applying argument to non function type")
 eval env (ELam id e) = VClos env id e
+
+closConverter :: Value -> (Env, (Id, Expr))
+closConverter (VClos x y z) = (x, (y, z))
 --------------------------------------------------------------------------------
 evalOp :: Binop -> Value -> Value -> Value
 --------------------------------------------------------------------------------
