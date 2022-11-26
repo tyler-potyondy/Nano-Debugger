@@ -67,7 +67,6 @@ import Control.Exception
 %%
 
 Top  : ID '=' Expr                 { $3 }
-     | TNUM '=' TNUM               { EInt 0 }
      | Expr                        { $1 }
 
 
@@ -85,16 +84,41 @@ BinOp : '+'  {Plus}
 Ids : ID         { [$1] } 
     | ID Ids     { $1 : $2 }
 
-Expr : TNUM                        { EInt $1 }
-     | ID                          { EVar $1 } 
+Expr : if Expr then Expr else Expr { EIf $2 $4 $6 }
      | let Ids '=' Expr in Expr    { mkLet $2 $4 $6 }
-     | Expr BinOp Expr             { EBin $2 $1 $3 }
-     | '(' Expr ')'                { $2 }
-     | '\\' Ids '->' Expr          { mkLam $2 $4 }
-     | true                        { EBool True }
-     | false                       { EBool False }
-     | if Expr then Expr else Expr { EIf $2 $4 $6 }
-     | Expr Expr                   { EApp $1 $2 }
+     | Expr2                       { $1 }
+
+Expr2 : '\\' Ids '->' Expr          { mkLam $2 $4 }
+      | Expr3                      { $1 }
+
+Expr3 : Expr '||' Expr             { EBin Or $1 $3}
+      | Expr4                     { $1 }
+
+Expr4 : Expr '&&' Expr             { EBin And $1 $3}
+      | Expr5                     { $1 }
+
+Expr5 : Expr '==' Expr             { EBin Eq $1 $3}
+      | Expr '/=' Expr             { EBin Ne $1 $3}
+      | Expr '<=' Expr             { EBin Le $1 $3}
+      | Expr '<' Expr              { EBin Lt $1 $3}
+      | Expr6                     { $1 }
+
+Expr6 : Expr ':' Expr             { EBin Cons $1 $3}
+      | Expr7                     { $1 }
+
+Expr7 : Expr '+' Expr             { EBin Plus $1 $3}
+      | Expr '-' Expr             { EBin Minus $1 $3}
+      | Expr8                     { $1 }
+
+Expr8 : Expr '*' Expr             { EBin Mul $1 $3}
+      | Expr9                     { $1 }
+
+Expr9 : TNUM                     { EInt $1 }
+      | true                     { EBool True }
+      | false                    { EBool False }
+      | Expr Expr                { EApp $1 $2 }
+      | '(' Expr ')'             { $2 }
+      | ID                       { EVar $1 }
 
 {
 mkLam :: [Id] -> Expr -> Expr
