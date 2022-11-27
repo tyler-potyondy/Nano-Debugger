@@ -10,6 +10,7 @@ module Language.Nano.Eval
 import Control.Exception (throw, catch)
 import Language.Nano.Types
 import Language.Nano.Parser
+import Control.Monad.State
 
 --------------------------------------------------------------------------------
 execFile :: FilePath -> IO Value
@@ -166,35 +167,53 @@ exitError (Error msg) = return (VErr msg)
 --------------------------------------------------------------------------------
 eval :: Env -> Expr -> Value
 --------------------------------------------------------------------------------
-eval _ (EInt i)  = VInt i
-eval _ (EBool b) = VBool b
-eval _ ENil    = VNil
-eval env (EVar id) = lookupId id env
-eval env (EBin binop e1 e2) = evalOp binop (eval env e1) (eval env e2)
-eval env (EIf e1 e2 e3) = case eval env e1 of
-                            VBool True  -> eval env e2
-                            VBool False -> eval env e3
-                            _           -> throw (Error "type error")
+eval s e = evalState (evalS e) s
 
-eval env (ELet id e1 e2) = eval newEnv e2
-                            where
-                              newEnv = (id, eval env e1) : env
+evalS :: Expr -> State Env Value
+evalS (EInt i)  = do { return (VInt i)}
+evalS (EBool b) = do { return (VBool b)}
+evalS ENil      = do { return VNil }
+evalS (EVar id) = do
+                    gets (lookupId id);
 
-eval env (EApp e1@(EVar fname) e2) = let e1eval = eval env e1 in
-                                       case e1eval of
-                                          VPrim f -> f (eval env e2)
-                                          (VClos fro lhs body) -> eval newEnv body
-                                            where
-                                              newEnv = (lhs, eval env e2) : ((fname, e1eval) : fro)
+evalS (EBin binop e1 e2) = do
+                            e1s <- evalS e1
+                            e2s <- evalS e2
+                            return (evalOp binop e1s e2s)
 
-eval env (EApp inner e3) = case eval env inner of
-                            VClos fro lhs res -> eval newEnv res
-                                    where
-                                      newEnv = (lhs, eval env e3): fro
+evalS (EIf e1 e2 e3) = do
+                        e1s <- evalS e1
+                        case e1s of
+                          VBool True  -> evalS e2
+                          VBool False -> evalS e3
+                          _           -> throw (Error "type error")
+
+evalS (ELet id e1 e2) = do
+                          e1s <- evalS e1
+                          e <- get
+                          put (insertIntoEnv [(id, e1s)] e)
+                          evalS e2
+
+evalS (EApp e1@(EVar fname) e2) = do
+                                    e1eval <- evalS e1
+                                    e2eval <- evalS e2
+                                    case e1eval of
+                                      VPrim f -> return (f e2eval)
+                                      (VClos fro lhs body) -> do
+                                                                let newEnv = insertIntoEnv [(fname, e1eval), (lhs, e2eval)] fro
+                                                                return (evalState (evalS body) newEnv)
+
+evalS (EApp inner e3) = do
+                          innerEval <- evalS inner
+                          case innerEval of
+                            VClos fro lhs res -> do
+                                                    e3Eval <- evalS e3
+                                                    let newEnv = insertIntoEnv [(lhs, e3Eval)] fro
+                                                    return (evalState (evalS res) newEnv)
                             _                 -> throw (Error "type error")
 
 
-eval env (ELam id e) = VClos env id e
+evalS (ELam id e) = do {env <- get; return (VClos env id e)}
 
 --------------------------------------------------------------------------------
 evalOp :: Binop -> Value -> Value -> Value
@@ -256,6 +275,11 @@ lookupId id []     = throw (Error ("unbound variable: " ++ id))
 lookupId id (f:rest)
                     | fst f == id = snd f
                     | otherwise = lookupId id rest
+
+
+insertIntoEnv :: [(Id, Value)] -> Env -> Env
+insertIntoEnv r env = foldl (flip (:)) env r
+
 
 prelude :: Env
 prelude =
