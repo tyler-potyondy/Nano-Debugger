@@ -64,6 +64,7 @@ import Control.Exception
 %right ':'
 %left '+' '-'
 %left '*'
+%nonassoc APP
 %%
 
 Top  : ID '=' Expr                 { $3 }
@@ -113,12 +114,19 @@ Expr7 : Expr '+' Expr             { EBin Plus $1 $3}
 Expr8 : Expr '*' Expr             { EBin Mul $1 $3}
       | Expr9                     { $1 }
 
-Expr9 : TNUM                     { EInt $1 }
+Expr9 : Expr Atom                { EApp $1 $2 }
+      | Atom                     { $1 }   
+      
+Atom  : TNUM                     { EInt $1 }
       | true                     { EBool True }
       | false                    { EBool False }
-      | Expr Expr                { EApp $1 $2 }
+      | '[' CSN ']'              { $2 }
       | '(' Expr ')'             { $2 }
       | ID                       { EVar $1 }
+
+CSN : TNUM ',' CSN { EBin Cons (EInt $1) $3 }
+    | TNUM { EBin Cons (EInt $1) ENil }
+    | { ENil }
 
 {
 mkLam :: [Id] -> Expr -> Expr
@@ -128,6 +136,10 @@ mkLam (x:xs) e = ELam x (mkLam xs e)
 mkLet :: [Id] -> Expr -> Expr -> Expr
 mkLet []     e1 e2 = e2
 mkLet (x:xs) e1 e2 = ELet x (mkLam xs e1) e2
+
+mkApp :: [Expr] -> Expr
+mkApp []     = error "mkApp: empty list"
+mkApp rest = foldl1 EApp rest
 
 parseError :: [Token] -> Except String a
 parseError (l:ls) = throwError (show l)

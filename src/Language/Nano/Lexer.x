@@ -51,6 +51,8 @@ tokens :-
   "/="                          { \p _ -> NEQ  p }
   "||"                          { \p _ -> OR  p }
   "&&"                          { \p _ -> AND  p }
+  "["                           { \p _ -> LBRAC  p }
+  "]"                           { \p _ -> RBRAC  p }
   [0-9]+                        { \p s -> NUM    p (read(s)::Int) }
   [a-zA-Z][a-zA-Z0-9]*          { \p s -> ID     p s }
 

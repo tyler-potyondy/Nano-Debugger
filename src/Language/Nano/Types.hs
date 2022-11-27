@@ -52,6 +52,7 @@ data Value
   | VErr  String
   | VPrim (Value -> Value)
 
+
 type Env = [(Id, Value)]
 
 instance Eq Value where
@@ -60,6 +61,13 @@ instance Eq Value where
   VNil          == VNil          = True
   (VCons x1 y1) == (VCons x2 y2) = x1 == x2 && y1 == y2
   _             == _             = False
+
+isComparable :: Value -> Bool
+isComparable VNil = True
+isComparable (VCons _ _) = True
+isComparable (VInt _) = True
+isComparable (VBool _) = True
+isComparable _ = False
 
 -- instance Show Binop where
 --   show = binopString

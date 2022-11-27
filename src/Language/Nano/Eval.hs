@@ -175,6 +175,7 @@ eval env (EIf e1 e2 e3) = case eval env e1 of
                             VBool True  -> eval env e2
                             VBool False -> eval env e3
                             _           -> throw (Error "type error")
+
 eval env (ELet id e1 e2) = eval newEnv e2
                             where
                               newEnv = (id, eval env e1) : env
@@ -186,61 +187,53 @@ eval env (EApp e1@(EVar fname) e2) = let e1eval = eval env e1 in
                                             where
                                               newEnv = (lhs, eval env e2) : ((fname, e1eval) : fro)
 
-eval env (EApp (ELam id e) e2) = eval newEnv e
-                                      where
-                                         newEnv = (id, eval env e2):env    
-eval env (EApp (EApp e1 e2) e3) = case e1 of (EVar id) -> eval env (EApp (EApp (ELam funcId funcExpr) e2) e3)
-                                                where
-                                                  clos = closConverter (lookupId id env)
-                                                  funcId = fst (snd clos)
-                                                  funcExpr = snd (snd clos)
-                                             (ELam id expr) -> eval ((id,(eval env e2)):env) (EApp expr e3)
+eval env (EApp inner e3) = case eval env inner of
+                            VClos fro lhs res -> eval newEnv res
+                                    where
+                                      newEnv = (lhs, eval env e3): fro
+                            _                 -> throw (Error "type error")
 
-eval env (EApp _ s3) = throw (Error "type error: applying argument to non function type")
+
 eval env (ELam id e) = VClos env id e
 
-closConverter :: Value -> (Env, (Id, Expr))
-closConverter (VClos x y z) = (x, (y, z))
 --------------------------------------------------------------------------------
 evalOp :: Binop -> Value -> Value -> Value
 --------------------------------------------------------------------------------
 evalOp Plus  (VInt v1)  (VInt v2)     = VInt (v1 + v2)
-evalOp Plus  _          _             = throw (Error ("type error"))
+evalOp Plus  _          _             = throw (Error "type error")
 
 evalOp Minus (VInt v1)  (VInt v2)     = VInt (v1 - v2)
-evalOp Minus _          _             = throw (Error ("type error"))
+evalOp Minus _          _             = throw (Error "type error")
 
 evalOp Mul   (VInt v1)  (VInt v2)     = VInt (v1 * v2)
-evalOp Mul   _          _             = throw (Error ("type error"))
+evalOp Mul   _          _             = throw (Error "type error")
 
-evalOp Div   (VInt _)  (VInt 0)      = throw (Error ("Divide by zero"))
+evalOp Div   (VInt _)  (VInt 0)      = throw (Error "Divide by zero")
 evalOp Div   (VInt v1)  (VInt v2)     = VInt (v1 `div` v2)
-evalOp Div   _          _             = throw (Error ("type error"))
+evalOp Div   _          _             = throw (Error "type error")
 
-evalOp Eq    (VInt v1)  (VInt v2)     = VBool (v1 == v2)
-evalOp Eq    (VBool v1) (VBool v2)    = VBool (v1 == v2)
-evalOp Eq    _          _             = throw (Error ("type error"))
+evalOp Eq    x1 x2 = if isComparable x1 && isComparable x2 then VBool (x1 == x2) else throw (Error "type error")
 
 evalOp Ne    (VInt v1)  (VInt v2)     = VBool (v1 /= v2)
 evalOp Ne    (VBool v1) (VBool v2)    = VBool (v1 /= v2)
-evalOp Ne    _          _             = throw (Error ("type error"))
+evalOp Ne    _          _             = throw (Error "type error")
 
 evalOp Lt    (VInt v1)  (VInt v2)     = VBool (v1 < v2)
-evalOp Lt    _          _             = throw (Error ("type error"))
+evalOp Lt    _          _             = throw (Error "type error")
 
 evalOp Le    x          y             = evalOp Or (evalOp Lt x y) (evalOp Eq x y)
 
 evalOp And   (VBool x)  (VBool y)     = VBool (x && y)
-evalOp And   _          _             = throw (Error ("type error"))
+evalOp And   _          _             = throw (Error "type error")
 
 evalOp Or    (VBool x)  (VBool y)     = VBool (x || y)
-evalOp Or    _          _             = throw (Error ("type error"))
+evalOp Or    _          _             = throw (Error "type error")
 
 evalOp Cons  (VInt x)   VNil                         = VCons (VInt x) VNil
 evalOp Cons  (VInt x)   rest@(VCons (VInt _) _)      = VCons (VInt x) rest
 evalOp Cons  (VBool x)   VNil                        = VCons (VBool x) VNil
 evalOp Cons  (VBool x)   rest@(VCons (VBool _) _)    = VCons (VBool x) rest
-evalOp Cons  _          _                            = throw (Error ("type error"))
+evalOp Cons  _          _                            = throw (Error "type error")
 
 --------------------------------------------------------------------------------
 -- | `lookupId x env` returns the most recent
