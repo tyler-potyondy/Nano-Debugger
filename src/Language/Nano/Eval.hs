@@ -3,7 +3,7 @@ module Language.Nano.Eval
   ( execFile, execString, execExpr
   , eval, lookupId, prelude
   , parse
-  , env0, evalWrapper
+  , env0, evalWrapper, evalS2
   )
   where
 
@@ -25,7 +25,7 @@ execString s = execExpr (parseExpr s) `catch` exitError
 --------------------------------------------------------------------------------
 execExpr :: Expr -> IO Value
 --------------------------------------------------------------------------------
-execExpr e = return (eval prelude e) `catch` exitError
+execExpr e = (evalWrapper e prelude) `catch` exitError
 
 --------------------------------------------------------------------------------
 -- | `parse s` returns the Expr representation of the String s
@@ -357,7 +357,7 @@ evalS2 (ELet id e1 e2) = do
 --                                       VPrim f -> return (f e2eval)
 --                                       (VClos fro lhs body) -> do
 --                                                                 let newEnv = insertIntoEnv [(fname, e1eval), (lhs, e2eval)] fro
---                                                                 x <- (evalWrapper body newEnv)
+--                                                                 x <- (evalStateT (evalS2 body) newEnv)
 --                                                                 return x
 
 -- evalS2 (EApp inner e3) = do
@@ -366,8 +366,7 @@ evalS2 (ELet id e1 e2) = do
 --                             VClos fro lhs res -> do
 --                                                     e3Eval <- evalS2 e3
 --                                                     let newEnv = insertIntoEnv [(lhs, e3Eval)] fro
---                                                     x <- (evalWrapper res newEnv)
---                                                     return x
+--                                                     return (evalStateT (evalS2 res) newEnv)
 --                             _                 -> throw (Error "type error")
 
 
