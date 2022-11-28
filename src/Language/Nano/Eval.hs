@@ -3,7 +3,7 @@ module Language.Nano.Eval
   ( execFile, execString, execExpr
   , eval, lookupId, prelude
   , parse
-  , env0
+  , env0, evalWrapper
   )
   where
 
@@ -298,3 +298,84 @@ env0 =  [ ("z1", VInt 0)
         ]
 
 --------------------------------------------------------------------------------
+
+
+---Experiment---
+
+evalWrapper :: Expr -> Env -> IO Value
+evalWrapper i x = do 
+  (x,y) <- runStateT (evalS2 i) x
+  return x
+
+code :: Int -> StateT Env IO Value
+code 4 = do
+    x <- get
+    io $ print x
+    return (VInt 3)
+
+io :: IO a -> StateT Env IO a
+io = liftIO
+
+getEnv :: StateT Env IO ()
+getEnv = do
+          currEnv <- get 
+          io $ print currEnv
+
+evalS2 :: Expr -> StateT Env IO Value
+evalS2 (EInt i)  = do { getEnv; return (VInt i) }
+evalS2 (EBool b) = do { getEnv; return (VBool b) }
+evalS2 ENil      = do { getEnv; return VNil }
+evalS2 (EVar id) = do
+                    getEnv
+                    gets (lookupId id);
+
+evalS2 (EBin binop e1 e2) = do
+                              getEnv
+                              e1s <- evalS2 e1
+                              e2s <- evalS2 e2
+                              return (evalOp binop e1s e2s)
+
+evalS2 (EIf e1 e2 e3) = do
+                          getEnv
+                          e1s <- evalS2 e1
+                          case e1s of
+                            VBool True  -> evalS2 e2
+                            VBool False -> evalS2 e3
+                            _           -> throw (Error "type error")
+
+evalS2 (ELet id e1 e2) = do
+                          getEnv
+                          e1s <- evalS2 e1
+                          e <- get
+                          put (insertIntoEnv [(id, e1s)] e)
+                          evalS2 e2
+
+-- evalS2 (EApp e1@(EVar fname) e2) = do
+--                                     e1eval <- evalS2 e1
+--                                     e2eval <- evalS2 e2
+--                                     case e1eval of
+--                                       VPrim f -> return (f e2eval)
+--                                       (VClos fro lhs body) -> do
+--                                                                 let newEnv = insertIntoEnv [(fname, e1eval), (lhs, e2eval)] fro
+--                                                                 x <- (evalWrapper body newEnv)
+--                                                                 return x
+
+-- evalS2 (EApp inner e3) = do
+--                           innerEval <- evalS2 inner
+--                           case innerEval of
+--                             VClos fro lhs res -> do
+--                                                     e3Eval <- evalS2 e3
+--                                                     let newEnv = insertIntoEnv [(lhs, e3Eval)] fro
+--                                                     x <- (evalWrapper res newEnv)
+--                                                     return x
+--                             _                 -> throw (Error "type error")
+
+
+evalS2 (ELam id e) = do {getEnv; env <- get; return (VClos env id e)}
+
+
+--test expression (ELet "x" (EInt 3) (EBin Plus (EVar x) (EVar x)))
+-- >>> let e1 = EBin Plus (EVar "x")  (EVar "y")
+-- >>> let e2 = ELet "x" (EInt 1) (ELet "y" (EInt 2) e1)
+-- >>> eval [] e2
+-- 3
