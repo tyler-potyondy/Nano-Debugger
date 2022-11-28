@@ -3,7 +3,7 @@ module Language.Nano.Eval
   ( execFile, execString, execExpr
   , eval, lookupId, prelude
   , parse
-  , env0, evalWrapper
+  , env0, evalWrapper, evalS2
   )
   where
 
@@ -25,7 +25,7 @@ execString s = execExpr (parseExpr s) `catch` exitError
 --------------------------------------------------------------------------------
 execExpr :: Expr -> IO Value
 --------------------------------------------------------------------------------
-execExpr e = return (eval prelude e) `catch` exitError
+execExpr e = (evalWrapper e prelude) `catch` exitError
 
 --------------------------------------------------------------------------------
 -- | `parse s` returns the Expr representation of the String s
