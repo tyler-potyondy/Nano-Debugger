@@ -304,8 +304,7 @@ env0 =  [ ("z1", VInt 0)
 
 evalWrapper :: Expr -> Env -> IO Value
 evalWrapper i x = do 
-  (x,y) <- runStateT (evalS2 i) x
-  return x
+                    evalStateT (evalS2 i) x
 
 code :: Int -> StateT Env IO Value
 code 4 = do
@@ -350,25 +349,27 @@ evalS2 (ELet id e1 e2) = do
                           put (insertIntoEnv [(id, e1s)] e)
                           evalS2 e2
 
--- evalS2 (EApp e1@(EVar fname) e2) = do
---                                     e1eval <- evalS2 e1
---                                     e2eval <- evalS2 e2
---                                     case e1eval of
---                                       VPrim f -> return (f e2eval)
---                                       (VClos fro lhs body) -> do
---                                                                 let newEnv = insertIntoEnv [(fname, e1eval), (lhs, e2eval)] fro
---                                                                 x <- (evalWrapper body newEnv)
---                                                                 return x
+evalS2 (EApp e1@(EVar fname) e2) = do
+                                    e1eval <- evalS2 e1
+                                    e2eval <- evalS2 e2
+                                    case e1eval of
+                                      VPrim f -> return (f e2eval)
+                                      (VClos fro lhs body) -> do
+                                                                let newEnv = insertIntoEnv [(fname, e1eval), (lhs, e2eval)] fro
+                                                                -- execute body with newEnv
+                                                                io (evalWrapper body newEnv)
+                                      _ -> throw (Error "type error")
+                                                                
+                                                                
 
--- evalS2 (EApp inner e3) = do
---                           innerEval <- evalS2 inner
---                           case innerEval of
---                             VClos fro lhs res -> do
---                                                     e3Eval <- evalS2 e3
---                                                     let newEnv = insertIntoEnv [(lhs, e3Eval)] fro
---                                                     x <- (evalWrapper res newEnv)
---                                                     return x
---                             _                 -> throw (Error "type error")
+evalS2 (EApp inner e3) = do
+                          innerEval <- evalS2 inner
+                          case innerEval of
+                            VClos fro lhs res -> do
+                                                    e3Eval <- evalS2 e3
+                                                    let newEnv = insertIntoEnv [(lhs, e3Eval)] fro
+                                                    io (evalWrapper res newEnv)
+                            _                 -> throw (Error "type error")
 
 
 evalS2 (ELam id e) = do {getEnv; env <- get; return (VClos env id e)}
