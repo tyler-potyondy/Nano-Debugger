@@ -10,6 +10,10 @@ packages:
 # Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
 extra-deps:
 - clock-0.7.2
+- brick-1.5@sha256:e9f1785065a92bc99cd89c4076ee740b80bb4254f6b25346dff82e0172e63644,17826
+- bimap-0.5.0@sha256:aba506d02a1c93fc2b50dcbe728d2a4d07cca89b7033945418061a0b08576ebd,1889
+- text-zipper-0.12@sha256:e96110598fc25e57a99ffcd8e583351af8b325b813aa5e3bd0adc627e3e02b6b,1472
+- vty-5.37@sha256:416ba9007f6b64226ad68bfd7a227714082832d004e07567e9850a7cec67d77a,20859
 
 # Override default flag values for local packages and extra-deps
 flags: {}

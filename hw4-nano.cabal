@@ -15,12 +15,19 @@ Library
   ghc-options:         -W -threaded
   exposed-modules:    Language.Nano.Types,
                       Language.Nano.Eval,
-                      Language.Nano.Parser
+                      Language.Nano.Parser,
+		                  Language.Nano.UI                     
 
   -- other-extensions:
   build-depends:       base,
                        array,
-                       mtl
+                       mtl,
+                        vty,
+                        microlens-mtl,
+                        vector,
+                        microlens,
+                        word-wrap,
+                        brick==1.5
 
   hs-source-dirs:      src
   default-language:    Haskell2010
@@ -31,6 +38,12 @@ executable nano
   build-depends:       base,
                        haskeline,
                        mtl,
+                        vty,
+                        microlens-mtl,
+                        vector,
+                       microlens,
+                       word-wrap,
+                       brick == 1.5,
                        transformers,
                        hw4-nano
   default-language:    Haskell2010
