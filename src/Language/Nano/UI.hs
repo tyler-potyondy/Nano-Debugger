@@ -40,9 +40,30 @@ import Brick.Util (fg, on)
 
 -- some sort of drop down
 
-env0 =  [ ("z1", (Nano.EIf (Nano.EBin Nano.Eq (Nano.EVar "z1") (Nano.EVar "x")) (Nano.EBin Nano.Le (Nano.EVar "y") (Nano.EVar "z")) (Nano.EBin Nano.Le (Nano.EVar "z") (Nano.EVar "y"))))
+env0 :: Nano.Env
+{--
+env0 =  [ ("z1", (Nano.EIf (Nano.EBin Nano.Eq (Nano.EVar "z1") (Nano.EVar "x")) (Nano.EBin Nano.Le (Nano.EVar "y") (Nano.EVar "z")) (Nano.EBin Nano.Le (Nano.EVar "z") (Nano.EVar "y")))),
+          ("z0", (Nano.VInt 0))
         ]
+        --}
+env0 =  [ ("z1", Nano.VInt 0)
+        , ("x" , Nano.VInt 1)
+        , ("y" , Nano.VInt 2)
+        , ("z" , Nano.VInt 3)
+        , ("z1", Nano.VInt 4)
+        ]
+env0' =
+  [ ("c0", Nano.VInt 0)
+  , ("c1", Nano.VInt 1)
+  , ("c2", Nano.VInt 2)
+  , ("c3", Nano.VInt 3)
+  , ("c0", Nano.VInt 4)
+  , ("c1", Nano.VInt 5)
+  ]
 
+env0Map = map (\(x,y) -> x ++  " " ++ show y) env0
+env0'Map = map (\(x,y) -> x ++  " " ++ show y) env0'
+--env1 = [env0Map,env0'Map]
 env1 = map (\(x,y) -> x ++  " " ++ show y) env0
 
 drawUI :: (Show a) => L.List () a -> [Widget ()]
@@ -70,7 +91,7 @@ appEvent (T.VtyEvent e) =
             els <- use L.listElementsL
             let el = nextElement els
                 pos = Vec.length els
-            modify $ L.listInsert pos el
+            modify $ L.listInsert 0 el
 
         V.EvKey V.KEsc [] -> M.halt
 
