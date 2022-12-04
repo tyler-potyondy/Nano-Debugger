@@ -64,7 +64,8 @@ env0' =
 env0Map = map (\(x,y) -> x ++  " " ++ show y) env0
 env0'Map = map (\(x,y) -> x ++  " " ++ show y) env0'
 --env1 = [env0Map,env0'Map]
-env1 = map (\(x,y) -> x ++  " " ++ show y) env0
+--env1 = map (\(x,y) -> x ++  " " ++ show y) env0
+env1 = env0
 
 drawUI :: (Show a) => L.List () a -> [Widget ()]
 drawUI l = [ui]
@@ -84,21 +85,21 @@ drawUI l = [ui]
                               , C.hCenter $ str "Press Esc to exit."
                               ]
 
-appEvent :: T.BrickEvent () e -> T.EventM () (L.List () [Char]) () -- suspend and return
+appEvent :: T.BrickEvent () e -> T.EventM () (L.List () (Nano.Id, Nano.Value)) () -- suspend and return
 appEvent (T.VtyEvent e) =
     case e of
         V.EvKey V.KEnter [] -> do
             els <- use L.listElementsL
             let el = nextElement els
-                pos = Vec.length els
-            modify $ L.listInsert 0 el
+
+            if (fst el) /= "?" then modify $ L.listInsert 0 el else return ()
 
         V.EvKey V.KEsc [] -> M.halt
 
         ev -> L.handleListEvent ev
     where
-      nextElement :: Vec.Vector [Char] -> [Char]
-      nextElement v = fromMaybe "?" $ Vec.find (flip Vec.notElem v) (Vec.fromList env1)
+      nextElement :: Vec.Vector (Nano.Id, Nano.Value) -> (Nano.Id, Nano.Value)
+      nextElement v = fromMaybe ("?", Nano.VInt 0) $ Vec.find (flip Vec.notElem v) (Vec.fromList env1)
 appEvent _ = return ()
 
 listDrawElement :: (Show a) => Bool -> a -> Widget ()
@@ -106,10 +107,10 @@ listDrawElement sel a =
     let selStr s = if sel
                    then withAttr customAttr (strWrap s)
                    else str s 
-    in C.hCenter $ str "Step " <+> (selStr $ show a)
+    in C.hCenter $ (selStr $ show a)
 
-initialState :: L.List () [Char]
-initialState = L.list () (Vec.fromList ["z0 10"]) 1
+initialState :: L.List () (Nano.Id, Nano.Value)
+initialState = L.list () (Vec.fromList [("z0", Nano.VInt 0)]) 1
 
 customAttr :: A.AttrName
 customAttr = L.listSelectedAttr <> A.attrName "custom"
@@ -121,7 +122,7 @@ theMap = A.attrMap V.defAttr
     , (customAttr,            fg V.cyan)
     ]
 
-theApp :: M.App (L.List () [Char]) e ()
+theApp :: M.App (L.List () (Nano.Id, Nano.Value)) e ()
 theApp =
     M.App { M.appDraw = drawUI
           , M.appChooseCursor = M.showFirstCursor
