@@ -3,7 +3,7 @@ module Language.Nano.Eval
   ( execFile, execString, execExpr
   , eval, lookupId, prelude
   , parse
-  , env0, evalWrapper, evalS2
+  , env0, evalWrapper, evalS2, evalBrick
   )
   where
 
@@ -25,7 +25,7 @@ execString s = execExpr (parseExpr s) `catch` exitError
 --------------------------------------------------------------------------------
 execExpr :: Expr -> IO Value
 --------------------------------------------------------------------------------
-execExpr e = (evalWrapper e prelude) `catch` exitError
+execExpr e = return (evalWrapper e (prelude,[prelude])) `catch` exitError
 
 --------------------------------------------------------------------------------
 -- | `parse s` returns the Expr representation of the String s
@@ -300,33 +300,26 @@ env0 =  [ ("z1", VInt 0)
 --------------------------------------------------------------------------------
 
 
----Experiment---
+evalBrick :: Expr -> (Env,[Env]) -> (Value, (Env,[Env]))
+evalBrick expr state = runState (evalS2 expr) state
 
-evalWrapper :: Expr -> Env -> IO Value
+evalWrapper :: Expr -> (Env,[Env]) -> Value
 evalWrapper i x = do 
-                    evalStateT (evalS2 i) x
+                    evalState (evalS2 i) x
 
-code :: Int -> StateT Env IO Value
-code 4 = do
-    x <- get
-    io $ print x
-    return (VInt 3)
-
-io :: IO a -> StateT Env IO a
-io = liftIO
-
-getEnv :: StateT Env IO ()
+getEnv :: State (Env,[Env]) ()
 getEnv = do
-          currEnv <- get 
-          io $ print currEnv
+          (currEnv,envList) <- get 
+          put (currEnv,currEnv:envList)
 
-evalS2 :: Expr -> StateT Env IO Value
+evalS2 :: Expr -> State (Env,[Env]) Value
 evalS2 (EInt i)  = do { getEnv; return (VInt i) }
 evalS2 (EBool b) = do { getEnv; return (VBool b) }
 evalS2 ENil      = do { getEnv; return VNil }
 evalS2 (EVar id) = do
                     getEnv
-                    gets (lookupId id);
+                    (env,_) <- get
+                    return (lookupId id env)
 
 evalS2 (EBin binop e1 e2) = do
                               getEnv
@@ -345,8 +338,8 @@ evalS2 (EIf e1 e2 e3) = do
 evalS2 (ELet id e1 e2) = do
                           getEnv
                           e1s <- evalS2 e1
-                          e <- get
-                          put (insertIntoEnv [(id, e1s)] e)
+                          (e,store) <- get
+                          put ((insertIntoEnv [(id, e1s)] e),store)
                           evalS2 e2
 
 evalS2 (EApp e1@(EVar fname) e2) = do
@@ -356,8 +349,8 @@ evalS2 (EApp e1@(EVar fname) e2) = do
                                       VPrim f -> return (f e2eval)
                                       (VClos fro lhs body) -> do
                                                                 let newEnv = insertIntoEnv [(fname, e1eval), (lhs, e2eval)] fro
-                                                                -- execute body with newEnv
-                                                                io (evalWrapper body newEnv)
+                                                                (_,store) <- get
+                                                                return (evalWrapper body (newEnv,store))
                                       _ -> throw (Error "type error")
                                                                 
                                                                 
@@ -368,11 +361,12 @@ evalS2 (EApp inner e3) = do
                             VClos fro lhs res -> do
                                                     e3Eval <- evalS2 e3
                                                     let newEnv = insertIntoEnv [(lhs, e3Eval)] fro
-                                                    io (evalWrapper res newEnv)
+                                                    (_,store) <- get
+                                                    return (evalWrapper res (newEnv,store))
                             _                 -> throw (Error "type error")
 
 
-evalS2 (ELam id e) = do {getEnv; env <- get; return (VClos env id e)}
+evalS2 (ELam id e) = do {getEnv; (env,_) <- get; return (VClos env id e)}
 
 
 --test expression (ELet "x" (EInt 3) (EBin Plus (EVar x) (EVar x)))
@@ -380,3 +374,22 @@ evalS2 (ELam id e) = do {getEnv; env <- get; return (VClos env id e)}
 -- >>> let e2 = ELet "x" (EInt 1) (ELet "y" (EInt 2) e1)
 -- >>> eval [] e2
 -- 3
+
+--IGNORE THESE FUNCTION...USED FOR TESTING--
+-- evalPrinter::Expr -> (Env,[Env]) -> IO Value
+-- evalPrinter expr state = do 
+--                             let (a, state2) = runState (evalS2 expr) state
+--                             print (snd state2)
+--                             return a
+
+-- testExecExpr :: Expr -> IO Value
+-- --------------------------------------------------------------------------------
+-- testExecExpr e = evalPrinter e (prelude,[prelude]) `catch` exitError
+
+-- execFile2 :: FilePath -> IO Value
+-- --------------------------------------------------------------------------------
+-- execFile2 f = (readFile f >>= execString2) `catch` exitError
+
+-- execString2 :: String -> IO Value
+-- --------------------------------------------------------------------------------
+-- execString2 s = testExecExpr (parseExpr s) `catch` exitError
