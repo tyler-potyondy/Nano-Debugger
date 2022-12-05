@@ -25,7 +25,7 @@ execString s = execExpr (parseExpr s) `catch` exitError
 --------------------------------------------------------------------------------
 execExpr :: Expr -> IO Value
 --------------------------------------------------------------------------------
-execExpr e = return (evalWrapper e (prelude,[prelude])) `catch` exitError
+execExpr e = return (evalWrapper e ([],prelude,[prelude])) `catch` exitError
 
 --------------------------------------------------------------------------------
 -- | `parse s` returns the Expr representation of the String s
@@ -300,73 +300,76 @@ env0 =  [ ("z1", VInt 0)
 --------------------------------------------------------------------------------
 
 
-evalBrick :: Expr -> (Value, (Env,[Env]))
-evalBrick expr  = runState (evalS2 expr) (prelude,[prelude])
+evalBrick :: Expr -> (Value, ([String], Env,[Env]))
+evalBrick expr  = runState (evalS2 expr) ([],[],[[]])
 
-evalWrapper :: Expr -> (Env,[Env]) -> Value
+evalWrapper :: Expr -> ([String], Env,[Env]) -> Value
 evalWrapper i x = do 
                     evalState (evalS2 i) x
 
-getEnv :: State (Env,[Env]) ()
-getEnv = do
-          (currEnv,envList) <- get 
-          put (currEnv,currEnv:envList)
+getEnv :: String -> State ([String],Env,[Env]) ()
+getEnv str = do
+              (currStr, currEnv,envList) <- get 
+              put ((currStr++[str]),currEnv,currEnv:envList)
 
-evalS2 :: Expr -> State (Env,[Env]) Value
-evalS2 (EInt i)  = do { getEnv; return (VInt i) }
-evalS2 (EBool b) = do { getEnv; return (VBool b) }
-evalS2 ENil      = do { getEnv; return VNil }
+evalS2 :: Expr -> State ([String],Env,[Env]) Value
+evalS2 (EInt i)  = do { getEnv (show i); return (VInt i) }
+evalS2 (EBool b) = do { getEnv (show b); return (VBool b) }
+evalS2 ENil      = do { getEnv "Nil"; return VNil }
 evalS2 (EVar id) = do
-                    getEnv
-                    (env,_) <- get
+                    getEnv id
+                    (_,env,_) <- get
                     return (lookupId id env)
 
 evalS2 (EBin binop e1 e2) = do
-                              getEnv
                               e1s <- evalS2 e1
+                              getEnv (" "++(binopString binop)++" ")
                               e2s <- evalS2 e2
                               return (evalOp binop e1s e2s)
 
 evalS2 (EIf e1 e2 e3) = do
-                          getEnv
+                          getEnv "if "
                           e1s <- evalS2 e1
                           case e1s of
-                            VBool True  -> evalS2 e2
-                            VBool False -> evalS2 e3
+                            VBool True  -> do{getEnv ": \n \t then "; evalS2 e2}
+                            VBool False -> do{getEnv "\n \t else "; evalS2 e3}
                             _           -> throw (Error "type error")
 
 evalS2 (ELet id e1 e2) = do
-                          getEnv
+                          getEnv ("let " ++ id ++ " = ")
                           e1s <- evalS2 e1
-                          (e,store) <- get
-                          put ((insertIntoEnv [(id, e1s)] e),store)
+                          (currStr,e,store) <- get
+                          put (currStr,(insertIntoEnv [(id, e1s)] e),store)
+                          getEnv ("\n in ")
                           evalS2 e2
 
 evalS2 (EApp e1@(EVar fname) e2) = do
+                                    getEnv "e"
                                     e1eval <- evalS2 e1
                                     e2eval <- evalS2 e2
                                     case e1eval of
                                       VPrim f -> return (f e2eval)
                                       (VClos fro lhs body) -> do
                                                                 let newEnv = insertIntoEnv [(fname, e1eval), (lhs, e2eval)] fro
-                                                                (_,store) <- get
-                                                                return (evalWrapper body (newEnv,store))
+                                                                (currStr,_,store) <- get
+                                                                return (evalWrapper body (currStr,newEnv,store))
                                       _ -> throw (Error "type error")
                                                                 
                                                                 
 
 evalS2 (EApp inner e3) = do
+                          getEnv "f"
                           innerEval <- evalS2 inner
                           case innerEval of
                             VClos fro lhs res -> do
                                                     e3Eval <- evalS2 e3
                                                     let newEnv = insertIntoEnv [(lhs, e3Eval)] fro
-                                                    (_,store) <- get
-                                                    return (evalWrapper res (newEnv,store))
+                                                    (currStr,_,store) <- get
+                                                    return (evalWrapper res (currStr,newEnv,store))
                             _                 -> throw (Error "type error")
 
 
-evalS2 (ELam id e) = do {getEnv; (env,_) <- get; return (VClos env id e)}
+evalS2 (ELam id e) = do {getEnv "g"; (_,env,_) <- get; return (VClos env id e)}
 
 
 --test expression (ELet "x" (EInt 3) (EBin Plus (EVar x) (EVar x)))
