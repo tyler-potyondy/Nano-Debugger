@@ -300,8 +300,8 @@ env0 =  [ ("z1", VInt 0)
 --------------------------------------------------------------------------------
 
 
-evalBrick :: Expr -> (Env,[Env]) -> (Value, (Env,[Env]))
-evalBrick expr state = runState (evalS2 expr) state
+evalBrick :: Expr -> (Value, (Env,[Env]))
+evalBrick expr  = runState (evalS2 expr) (prelude,[prelude])
 
 evalWrapper :: Expr -> (Env,[Env]) -> Value
 evalWrapper i x = do 
