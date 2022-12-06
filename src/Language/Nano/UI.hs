@@ -41,12 +41,11 @@ import Brick.Util (fg, on)
 
 -- some sort of drop down
 
-env0 :: Nano.Env
 {--
+env0 :: Nano.Env
 env0 =  [ ("z1", (Nano.EIf (Nano.EBin Nano.Eq (Nano.EVar "z1") (Nano.EVar "x")) (Nano.EBin Nano.Le (Nano.EVar "y") (Nano.EVar "z")) (Nano.EBin Nano.Le (Nano.EVar "z") (Nano.EVar "y")))),
           ("z0", (Nano.VInt 0))
         ]
-        --}
 env0 =  [ ("z1", Nano.VInt 0)
         , ("x" , Nano.VInt 1)
         , ("y" , Nano.VInt 2)
@@ -66,9 +65,10 @@ env0Map = map (\(x,y) -> x ++  " " ++ show y) env0
 env0'Map = map (\(x,y) -> x ++  " " ++ show y) env0'
 --env1 = [env0Map,env0'Map]
 --env1 = map (\(x,y) -> x ++  " " ++ show y) env0
---env1 = env0
+env1 = env0
+--}
 
-env1 =   do
+finalEnv =   do
             inputEnv <- (Nano.execFileBrick "tests/input/t10.hs")
             let dispEnv = get2nd(snd (inputEnv))
             return dispEnv
@@ -101,22 +101,15 @@ appEvent (T.VtyEvent e) =
     case e of
         V.EvKey V.KEnter [] -> do
             els <- use L.listElementsL
-            inputEnv <- liftIO env1
-            --let dispEnv = get2nd (snd (inputEnv))
-            
+            inputEnv <- liftIO finalEnv            
             let pos = Vec.length els
             if (pos < (length inputEnv)) 
               then modify $ L.listInsert pos ((reverse (inputEnv)) !! pos)
             else return ()
-
-            --if (fst el) /= "?" then modify $ L.listInsert pos el else return ()
-
         V.EvKey V.KEsc [] -> M.halt
 
         ev -> L.handleListEvent ev
-    --where
-      --nextElement :: Vec.Vector Nano.Env (Nano.Id, Nano.Value) -> (Nano.Id, Nano.Value)
-      --nextElement v env = fromMaybe ("?", Nano.VInt 0) $ Vec.find (flip Vec.notElem v) (Vec.fromList env)
+    
 appEvent _ = return ()
 
 listDrawElement :: (Show a) => Bool -> a -> Widget ()
