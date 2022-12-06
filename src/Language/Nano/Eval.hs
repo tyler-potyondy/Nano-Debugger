@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-incomplete-patterns #-}
 module Language.Nano.Eval
-  ( execFile, execString, execExpr
+  ( execFile, execString, execExpr, execFileBrick
   , eval, lookupId, prelude
   , parse
   , env0, evalWrapper, evalS2, evalBrick
@@ -299,6 +299,17 @@ env0 =  [ ("z1", VInt 0)
 
 --------------------------------------------------------------------------------
 
+exitErrorBrick :: Error -> IO (Value, ([String], Env, [Env]))
+exitErrorBrick (Error msg) = return (VErr msg, ([],[],[]))
+
+execFileBrick :: FilePath -> IO (Value, ([String], Env, [Env]))
+execFileBrick f = (readFile f >>= execStringBrick) `catch` exitErrorBrick
+
+execStringBrick :: String -> IO (Value, ([String], Env, [Env]))
+execStringBrick s = execExprBrick (parseExpr s) `catch` exitErrorBrick
+
+execExprBrick :: Expr -> IO (Value, ([String], Env, [Env]))
+execExprBrick e = return (evalBrick e) `catch` exitErrorBrick
 
 evalBrick :: Expr -> (Value, ([String], Env,[Env]))
 evalBrick expr  = runState (evalS2 expr) ([],[],[[]])

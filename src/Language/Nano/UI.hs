@@ -5,6 +5,7 @@ import Lens.Micro ((^.))
 import Lens.Micro.Mtl
 import Control.Monad (void)
 import Control.Monad.State (modify)
+import Control.Monad.Trans (liftIO)
 #if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid
 #endif
@@ -65,7 +66,13 @@ env0Map = map (\(x,y) -> x ++  " " ++ show y) env0
 env0'Map = map (\(x,y) -> x ++  " " ++ show y) env0'
 --env1 = [env0Map,env0'Map]
 --env1 = map (\(x,y) -> x ++  " " ++ show y) env0
-env1 = env0
+--env1 = env0
+
+env1 =   do
+            inputEnv <- (Nano.execFileBrick "tests/input/t10.hs")
+            let dispEnv = get2nd(snd (inputEnv))
+            return dispEnv
+
 
 drawUI :: (Show a) => L.List () a -> [Widget ()]
 drawUI l = [ui]
@@ -84,22 +91,32 @@ drawUI l = [ui]
                               , C.hCenter $ str "Press enter to step through the environment."
                               , C.hCenter $ str "Press Esc to exit."
                               ]
+get2nd (_,a,_) = a
+pop :: [a] -> [a]
+pop [] = []
+pop xs = init xs
 
 appEvent :: T.BrickEvent () e -> T.EventM () (L.List () (Nano.Id, Nano.Value)) () -- suspend and return
 appEvent (T.VtyEvent e) =
     case e of
         V.EvKey V.KEnter [] -> do
             els <- use L.listElementsL
-            let el = nextElement els
+            inputEnv <- liftIO env1
+            --let dispEnv = get2nd (snd (inputEnv))
+            
+            let pos = Vec.length els
+            if (pos < (length inputEnv)) 
+              then modify $ L.listInsert pos ((reverse (inputEnv)) !! pos)
+            else return ()
 
-            if (fst el) /= "?" then modify $ L.listInsert 0 el else return ()
+            --if (fst el) /= "?" then modify $ L.listInsert pos el else return ()
 
         V.EvKey V.KEsc [] -> M.halt
 
         ev -> L.handleListEvent ev
-    where
-      nextElement :: Vec.Vector (Nano.Id, Nano.Value) -> (Nano.Id, Nano.Value)
-      nextElement v = fromMaybe ("?", Nano.VInt 0) $ Vec.find (flip Vec.notElem v) (Vec.fromList env1)
+    --where
+      --nextElement :: Vec.Vector Nano.Env (Nano.Id, Nano.Value) -> (Nano.Id, Nano.Value)
+      --nextElement v env = fromMaybe ("?", Nano.VInt 0) $ Vec.find (flip Vec.notElem v) (Vec.fromList env)
 appEvent _ = return ()
 
 listDrawElement :: (Show a) => Bool -> a -> Widget ()
@@ -110,7 +127,7 @@ listDrawElement sel a =
     in C.hCenter $ (selStr $ show a)
 
 initialState :: L.List () (Nano.Id, Nano.Value)
-initialState = L.list () (Vec.fromList [("z0", Nano.VInt 0)]) 1
+initialState = L.list () (Vec.fromList []) 1
 
 customAttr :: A.AttrName
 customAttr = L.listSelectedAttr <> A.attrName "custom"
@@ -130,6 +147,8 @@ theApp =
           , M.appStartEvent = return ()
           , M.appAttrMap = const theMap
           }
+
+
 
 main :: IO ()
 main = void $ M.defaultMain theApp initialState
