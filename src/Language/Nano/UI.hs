@@ -121,8 +121,11 @@ appEvent (T.VtyEvent e) =
             inputEnv <- liftIO finalEnv
             inputCode <- liftIO code
             let pos = Vec.length els
-            if (pos < (length inputEnv)) 
-              then modify $ L.listInsert pos ((concatCode (pos+1) inputCode), reverse (inputEnv) !! pos)
+            if pos < (length inputEnv) 
+              then
+                do
+                    modify $ L.listInsert pos ((concatCode (pos+1) inputCode), reverse (inputEnv) !! pos)
+                    modify $ L.listMoveDown
             else return ()
         V.EvKey V.KEsc [] -> M.halt
 
@@ -135,11 +138,12 @@ listDrawElement sel a =
     let selStr s = if sel
                     then withAttr customAttr (strWrap s)
                    else str s 
-    in C.hCenter $ (selStr $ (concatEnvTuples (snd a)))
+    in C.hCenter $ selStr $ concatEnvTuples (snd a)
 
 -- listDrawCode :: Bool -> DebuggerState -> Widget ()
 -- listDrawCode _ a = C.hCenter $ strWrap (fst a)
 
+concatCode :: (Ord t, Num t) => t -> [[Char]] -> [Char]
 concatCode _ []     = ""
 concatCode i (x:xs) = if i > 0
                         then x ++ concatCode (i-1) xs
@@ -157,9 +161,9 @@ customAttr = L.listSelectedAttr <> A.attrName "custom"
 
 theMap :: A.AttrMap
 theMap = A.attrMap V.defAttr
-    [ (L.listAttr,            V.white `on` V.blue)
-    , (L.listSelectedAttr,    V.blue `on` V.white)
-    , (customAttr,            fg V.cyan)
+    [ (L.listAttr,            V.white `on` V.red)
+    , (L.listSelectedAttr,    V.red `on` V.white)
+    , (customAttr,            fg V.red)
     ]
 
 theApp :: M.App (L.List () DebuggerState) e ()
