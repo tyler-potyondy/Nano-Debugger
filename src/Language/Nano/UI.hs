@@ -67,15 +67,16 @@ env0'Map = map (\(x,y) -> x ++  " " ++ show y) env0'
 --env1 = map (\(x,y) -> x ++  " " ++ show y) env0
 env1 = env0
 --}
+inFile = "tests/input/t2.hs"
 
 finalEnv = do
-            inputEnv <- (Nano.execFileBrick "tests/input/t2.hs")
+            inputEnv <- (Nano.execFileBrick inFile)
             -- let dispEnv = get2nd(snd (inputEnv))
             let dispEnv = get3rd_3Tuple(snd (inputEnv))
             return dispEnv
 -- code' = ["let z = ","3","\n in ","let y = ","2","\n in ","let x = ","1","\n in ","let z1 = ","0","\n in ","x"," + ","y"," - ","z"," + ","z1"]
 code = do
-        inputEnv <- liftIO (Nano.execFileBrick "tests/input/t2.hs")
+        inputEnv <- liftIO (Nano.execFileBrick inFile)
         let dispCode = (get1st_3Tuple(snd (inputEnv)))
         return dispCode
 
@@ -174,7 +175,7 @@ theApp =
 
 main :: IO ()
 main = do
-        x <- (Nano.execFileBrick "tests/input/t2.hs")
+        x <- (Nano.execFileBrick inFile)
         let listCode = get1st_3Tuple(snd x)
         let listEnv = get3rd_3Tuple(snd x)
         let initialState = L.list () (Vec.fromList []) 1 :: L.List () DebuggerState
