@@ -9,7 +9,6 @@ import Control.Monad.Trans (liftIO)
 #if !(MIN_VERSION_base(4,11,0))
 import Data.Monoid
 #endif
-import Data.Maybe (fromMaybe)
 import qualified Graphics.Vty as V
 
 import qualified Brick.Main as M
@@ -71,15 +70,18 @@ env1 = env0
 
 finalEnv = do
             inputEnv <- (Nano.execFileBrick "tests/input/t2.hs")
-            let dispEnv = get2nd(snd (inputEnv))
-            -- let dispEnv = get3rd_3Tuple(snd (inputEnv))
+            -- let dispEnv = get2nd(snd (inputEnv))
+            let dispEnv = get3rd_3Tuple(snd (inputEnv))
             return dispEnv
--- code = ["let z = ","3","\n in ","let y = ","2","\n in ","let x = ","1","\n in ","let z1 = ","0","\n in ","x"," + ","y"," - ","z"," + ","z1"]
+-- code' = ["let z = ","3","\n in ","let y = ","2","\n in ","let x = ","1","\n in ","let z1 = ","0","\n in ","x"," + ","y"," - ","z"," + ","z1"]
 code = do
         inputEnv <- liftIO (Nano.execFileBrick "tests/input/t2.hs")
-        return (get1st_3Tuple(snd (inputEnv)))
+        let dispCode = (get1st_3Tuple(snd (inputEnv)))
+        return dispCode
 
-drawUI :: (Show a) => L.List () a -> [Widget ()]
+type DebuggerState = ([Char], Nano.Env)
+
+drawUI :: L.List () DebuggerState -> [Widget ()]
 drawUI l = [ui]
     where
         label = str "Item " <+> cur <+> str " of " <+> total -- executing inside a closure?
@@ -87,18 +89,18 @@ drawUI l = [ui]
                 Nothing -> str "-"
                 Just i -> str (show (i + 1))
         total = str $ show $ Vec.length $ l^.(L.listElementsL)
-        code' = case l^.(L.listSelectedL) of
-                  Nothing -> "-"
-                  Just i  -> concatCode (i+1) code
+        code'' = case l^.(L.listSelectedElementL) of
+                  (s, _) -> s
         box1 = B.borderWithLabel (str "Code") $
-              hLimit 25 $
+              -- hLimit 25 $
               vLimit 15 $
-              strWrap code'
+              strWrap code''
         box2 = B.borderWithLabel label $
-              hLimit 25 $
+              -- hLimit 25 $
               vLimit 15 $
               L.renderList listDrawElement True l
         ui = C.vCenter $ vBox [ C.center $ padRight (Pad 2) box1 <+> box2
+        -- ui = C.vCenter $ vBox [ C.center box1
                               , str " "
                               , C.hCenter $ str "Press enter to step through the environment."
                               , C.hCenter $ str "Press Esc to exit."
@@ -110,15 +112,16 @@ pop :: [a] -> [a]
 pop [] = []
 pop xs = init xs
 
-appEvent :: T.BrickEvent () e -> T.EventM () (L.List () (Nano.Id, Nano.Value)) () -- suspend and return
+appEvent :: T.BrickEvent () e -> T.EventM () (L.List () DebuggerState) () -- suspend and return
 appEvent (T.VtyEvent e) =
     case e of
         V.EvKey V.KEnter [] -> do
             els <- use L.listElementsL
             inputEnv <- liftIO finalEnv
+            inputCode <- liftIO code
             let pos = Vec.length els
             if (pos < (length inputEnv)) 
-              then modify $ L.listInsert pos ((reverse (inputEnv)) !! pos)
+              then modify $ L.listInsert pos ((concatCode (pos+1) inputCode), reverse (inputEnv) !! pos)
             else return ()
         V.EvKey V.KEsc [] -> M.halt
 
@@ -126,19 +129,27 @@ appEvent (T.VtyEvent e) =
     
 appEvent _ = return ()
 
-listDrawElement :: (Show a) => Bool -> a -> Widget ()
+listDrawElement :: Bool -> DebuggerState -> Widget ()
 listDrawElement sel a =
     let selStr s = if sel
-                   then withAttr customAttr (strWrap s)
+                    then withAttr customAttr (strWrap s)
                    else str s 
-    in C.hCenter $ (selStr $ show a)
+    in C.hCenter $ (selStr $ (concatEnvTuples (snd a)))
 
-concatCode i x = if i > 0
-                  then (head x) ++ concatCode (i - 1) (tail x)
-                 else ""
+-- listDrawCode :: Bool -> DebuggerState -> Widget ()
+-- listDrawCode _ a = C.hCenter $ strWrap (fst a)
 
-initialState :: L.List () (Nano.Id, Nano.Value)
-initialState = L.list () (Vec.fromList []) 1
+concatCode _ []     = ""
+concatCode i (x:xs) = if i > 0
+                        then x ++ concatCode (i-1) xs
+                      else ""
+
+concatEnvTuples (x:[]) = show x
+concatEnvTuples (x:xs) = show x ++ "," ++ concatEnvTuples xs
+concatEnvTuples _      = ""
+
+-- initialState :: L.List () ([String], [(Nano.Id, Nano.Value)])
+-- initialState = L.list () (Vec.fromList []) 1
 
 customAttr :: A.AttrName
 customAttr = L.listSelectedAttr <> A.attrName "custom"
@@ -150,7 +161,7 @@ theMap = A.attrMap V.defAttr
     , (customAttr,            fg V.cyan)
     ]
 
-theApp :: M.App (L.List () (Nano.Id, Nano.Value)) e ()
+theApp :: M.App (L.List () DebuggerState) e ()
 theApp =
     M.App { M.appDraw = drawUI
           , M.appChooseCursor = M.showFirstCursor
@@ -162,4 +173,9 @@ theApp =
 
 
 main :: IO ()
-main = void $ M.defaultMain theApp initialState
+main = do
+        x <- (Nano.execFileBrick "tests/input/t2.hs")
+        let listCode = get1st_3Tuple(snd x)
+        let listEnv = get3rd_3Tuple(snd x)
+        let initialState = L.list () (Vec.fromList []) 1 :: L.List () DebuggerState
+        void $ M.defaultMain theApp initialState
