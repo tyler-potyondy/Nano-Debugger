@@ -34,6 +34,7 @@ import Brick.Widgets.Core
   , vBox
   , withAttr
   , strWrap
+  , padRight, Padding(..)
   )
 import Brick.Util (fg, on)
 
@@ -68,11 +69,15 @@ env0'Map = map (\(x,y) -> x ++  " " ++ show y) env0'
 env1 = env0
 --}
 
-finalEnv =   do
-            inputEnv <- (Nano.execFileBrick "tests/input/t10.hs")
+finalEnv = do
+            inputEnv <- (Nano.execFileBrick "tests/input/t2.hs")
             let dispEnv = get2nd(snd (inputEnv))
+            -- let dispEnv = get3rd_3Tuple(snd (inputEnv))
             return dispEnv
-
+-- code = ["let z = ","3","\n in ","let y = ","2","\n in ","let x = ","1","\n in ","let z1 = ","0","\n in ","x"," + ","y"," - ","z"," + ","z1"]
+code = do
+        inputEnv <- liftIO (Nano.execFileBrick "tests/input/t2.hs")
+        return (get1st_3Tuple(snd (inputEnv)))
 
 drawUI :: (Show a) => L.List () a -> [Widget ()]
 drawUI l = [ui]
@@ -82,16 +87,25 @@ drawUI l = [ui]
                 Nothing -> str "-"
                 Just i -> str (show (i + 1))
         total = str $ show $ Vec.length $ l^.(L.listElementsL)
-        box = B.borderWithLabel label $
+        code' = case l^.(L.listSelectedL) of
+                  Nothing -> "-"
+                  Just i  -> concatCode (i+1) code
+        box1 = B.borderWithLabel (str "Code") $
+              hLimit 25 $
+              vLimit 15 $
+              strWrap code'
+        box2 = B.borderWithLabel label $
               hLimit 25 $
               vLimit 15 $
               L.renderList listDrawElement True l
-        ui = C.vCenter $ vBox [ C.hCenter box
+        ui = C.vCenter $ vBox [ C.center $ padRight (Pad 2) box1 <+> box2
                               , str " "
                               , C.hCenter $ str "Press enter to step through the environment."
                               , C.hCenter $ str "Press Esc to exit."
                               ]
 get2nd (_,a,_) = a
+get1st_3Tuple (x,_,_) = x
+get3rd_3Tuple (_,_,z) = z
 pop :: [a] -> [a]
 pop [] = []
 pop xs = init xs
@@ -101,7 +115,7 @@ appEvent (T.VtyEvent e) =
     case e of
         V.EvKey V.KEnter [] -> do
             els <- use L.listElementsL
-            inputEnv <- liftIO finalEnv            
+            inputEnv <- liftIO finalEnv
             let pos = Vec.length els
             if (pos < (length inputEnv)) 
               then modify $ L.listInsert pos ((reverse (inputEnv)) !! pos)
@@ -118,6 +132,10 @@ listDrawElement sel a =
                    then withAttr customAttr (strWrap s)
                    else str s 
     in C.hCenter $ (selStr $ show a)
+
+concatCode i x = if i > 0
+                  then (head x) ++ concatCode (i - 1) (tail x)
+                 else ""
 
 initialState :: L.List () (Nano.Id, Nano.Value)
 initialState = L.list () (Vec.fromList []) 1

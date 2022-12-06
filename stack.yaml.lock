@@ -11,6 +11,34 @@ packages:
       size: 387
   original:
     hackage: clock-0.7.2
+- completed:
+    hackage: brick-1.5@sha256:e9f1785065a92bc99cd89c4076ee740b80bb4254f6b25346dff82e0172e63644,17826
+    pantry-tree:
+      sha256: b71aee2013c83fbbb3ca22efaa2b955c54806393f3288310fb994ceb10fba46f
+      size: 6687
+  original:
+    hackage: brick-1.5@sha256:e9f1785065a92bc99cd89c4076ee740b80bb4254f6b25346dff82e0172e63644,17826
+- completed:
+    hackage: bimap-0.5.0@sha256:aba506d02a1c93fc2b50dcbe728d2a4d07cca89b7033945418061a0b08576ebd,1889
+    pantry-tree:
+      sha256: 285f5e86640f4bef3b7a60991defb8dd4b3714f8c294495d1136da182c1315a3
+      size: 470
+  original:
+    hackage: bimap-0.5.0@sha256:aba506d02a1c93fc2b50dcbe728d2a4d07cca89b7033945418061a0b08576ebd,1889
+- completed:
+    hackage: text-zipper-0.12@sha256:e96110598fc25e57a99ffcd8e583351af8b325b813aa5e3bd0adc627e3e02b6b,1472
+    pantry-tree:
+      sha256: 51edf26c8f66b1356c820b183e6442f8245ec2aef450fde4cd56db566347daa0
+      size: 604
+  original:
+    hackage: text-zipper-0.12@sha256:e96110598fc25e57a99ffcd8e583351af8b325b813aa5e3bd0adc627e3e02b6b,1472
+- completed:
+    hackage: vty-5.37@sha256:416ba9007f6b64226ad68bfd7a227714082832d004e07567e9850a7cec67d77a,20859
+    pantry-tree:
+      sha256: 75f72fc02ed2c9288b7957f2ff39e9b941fc41f83dff25aab4b9a540a47e6bdc
+      size: 5394
+  original:
+    hackage: vty-5.37@sha256:416ba9007f6b64226ad68bfd7a227714082832d004e07567e9850a7cec67d77a,20859
 snapshots:
 - completed:
     sha256: 428ec8d5ce932190d3cbe266b9eb3c175cd81e984babf876b64019e2cbe4ea68
