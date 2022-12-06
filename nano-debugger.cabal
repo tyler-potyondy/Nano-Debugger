@@ -1,10 +1,10 @@
-name:                hw4-nano
+name:                nano-debugger
 version:             0.1.0.0
-synopsis:            Starter code for cse130 homework/04-nano
+synopsis:            interactive visual debugger for the nano programming language
 license:             MIT
 license-file:        LICENSE
-author:              Ranjit Jhala
-maintainer:          jhala@cs.ucsd.edu
+author:              Tyler Potyondy, Vibha Satyanarayana, Ashish Bhole, and Aditya Giridharan
+maintainer:          agiridharan@ucsd.edu
 category:            Language
 build-type:          Simple
 extra-source-files:  README.md
@@ -45,7 +45,7 @@ executable nano
                        word-wrap,
                        brick == 1.5,
                        transformers,
-                       hw4-nano
+                       nano-debugger
   default-language:    Haskell2010
   main-is:             bin/Main.hs
 
@@ -60,5 +60,5 @@ test-suite test
                     filepath,
                     tasty,
                     tasty-hunit,
-                    hw4-nano
+                    nano-debugger
   other-modules:    Common
