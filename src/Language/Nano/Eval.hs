@@ -355,8 +355,8 @@ evalS2 (ELet id e1 e2) = do
                           evalS2 e2
 
 evalS2 (EApp e1@(EVar fname) e2) = do
-                                    getEnv "e"
                                     e1eval <- evalS2 e1
+                                    getEnv " "
                                     e2eval <- evalS2 e2
                                     case e1eval of
                                       VPrim f -> return (f e2eval)
@@ -380,7 +380,7 @@ evalS2 (EApp inner e3) = do
                             _                 -> throw (Error "type error")
 
 
-evalS2 (ELam id e) = do {getEnv "g"; (_,env,_) <- get; return (VClos env id e)}
+evalS2 (ELam id e) = do {getEnv ("\\ " ++ id ++ " -> " ++ (exprString e)) ; (_,env,_) <- get; return (VClos env id e)}
 
 
 --test expression (ELet "x" (EInt 3) (EBin Plus (EVar x) (EVar x)))
