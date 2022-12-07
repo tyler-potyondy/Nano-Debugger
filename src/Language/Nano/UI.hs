@@ -85,7 +85,7 @@ type DebuggerState = ([Char], Nano.Env)
 drawUI :: L.List () DebuggerState -> [Widget ()]
 drawUI l = [ui]
     where
-        label = str "Item " <+> cur <+> str " of " <+> total -- executing inside a closure?
+        label = str "Step " <+> cur <+> str " of " <+> total -- executing inside a closure?
         cur = case l^.(L.listSelectedL) of
                 Nothing -> str "-"
                 Just i -> str (show (i + 1))
